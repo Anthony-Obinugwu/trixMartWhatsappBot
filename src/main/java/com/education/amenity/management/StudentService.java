@@ -1,78 +1,42 @@
 package com.education.amenity.management;
 
+import org.apache.tomcat.util.http.fileupload.FileUploadException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.InputStream;
-import java.nio.file.*;
-import java.util.Optional;
-import java.util.UUID;
+import java.io.IOException;
 
 @Service
 public class StudentService {
-    private static final String UPLOAD_DIR = "uploads/";
 
     @Autowired
     private StudentRepository studentRepository;
 
+    @Autowired
+    private S3Service s3Service;
+
     @Transactional
-    public Student saveStudentFile(InputStream fileInputStream, String studentName, String fileName, String contentType) throws Exception {
-        // Generate file path with unique name
-        String uniqueFileName = UUID.randomUUID() + "_" + fileName;
-        Path path = Paths.get(UPLOAD_DIR, uniqueFileName);
-
-        // Create directories if not present
-        Files.createDirectories(path.getParent());
-
-        // Write file data from input stream
-        Files.copy(fileInputStream, path, StandardCopyOption.REPLACE_EXISTING);
-
-        // Handle student information
-        Optional<Student> existingStudent = studentRepository.findByStudentName(studentName);
-        Student student;
-
-        if (existingStudent.isPresent()) {
-            student = existingStudent.get();
-        } else {
-            student = new Student();
-            student.setStudentName(studentName);
+    public void saveStudentFile(MultipartFile file, Long studentId) throws Exception {
+        // Check if student exists
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new Exception("Student not found"));
+        try {
+            String uploadedFileKey = s3Service.uploadFile(file);
+            student.setFileName(uploadedFileKey);
+        } catch (IOException e) {
+            throw new FileUploadException("Failed to upload the file to S3: " + e.getMessage());
         }
-
-        // Update student file information
-        student.setFileName(uniqueFileName);
-        student.setFilePath(path.toString());
-        student.setFileType(contentType);
-
-        // Save student record
-        return studentRepository.save(student);
-    }
-
-
-    public void saveStudent(Student student) {
         studentRepository.save(student);
     }
 
 
-    public boolean deleteDocument(String fileName) throws Exception {
-        Path path = Paths.get(UPLOAD_DIR, fileName);
-
-        if (Files.exists(path)) {
-            Files.delete(path);
-            return true;
+    public Student createStudent(Student student) throws Exception {
+        if (studentRepository.findByStudentId(student.getStudentId()).isPresent() ||
+        studentRepository.findByPhoneNumber(student.getPhoneNumber()).isPresent()) {
+            throw new Exception("Duplicate studentId or phone number");
         }
-        return false;
-    }
-
-    public boolean copyDocument(String sourceFileName, String destinationFileName) throws Exception {
-        Path sourcePath = Paths.get(UPLOAD_DIR, sourceFileName);
-        Path destinationPath = Paths.get(UPLOAD_DIR, destinationFileName);
-
-        if (Files.exists(sourcePath)) {
-            Files.copy(sourcePath, destinationPath, StandardCopyOption.REPLACE_EXISTING);
-            return true;
-        }
-        return false;
+        return studentRepository.save(student);
     }
 }

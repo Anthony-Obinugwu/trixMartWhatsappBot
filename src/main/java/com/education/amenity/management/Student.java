@@ -18,15 +18,6 @@ public class Student {
     @Column(nullable = false)
     private String studentName;
 
-    @Column(nullable = true) // Allow null values
-    private String fileName;
-
-    @Column(nullable = true) // Allow null values
-    private String filePath;
-
-    @Column(nullable = true) // Allow null values
-    private String fileType;
-
     @Column(nullable = false)
     private String businessName;
 
@@ -38,4 +29,7 @@ public class Student {
 
     @Column(nullable = false)
     private String phoneNumber;
+
+    @Column
+    private String fileName; //This is the S3 object key for the sake of ref.
 }
