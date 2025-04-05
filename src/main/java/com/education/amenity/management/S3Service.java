@@ -68,6 +68,7 @@ public class S3Service {
                 .bucket(bucketName)
                 .key(key)
                 .contentType(file.getContentType())
+                .acl(ObjectCannedACL.PRIVATE)
                 .build();
 
         s3Client.putObject(putRequest, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
