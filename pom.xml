@@ -9,7 +9,7 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.education.amenity</groupId>
-	<artifactId>amenity-management</artifactId>
+	<artifactId>trixmart-id-system</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>Trixmart ID System</name>
 	<description>Just for storing Seller Data</description>
