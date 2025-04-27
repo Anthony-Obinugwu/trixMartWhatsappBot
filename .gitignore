@@ -35,3 +35,7 @@ node_modules/
 node_modules/
 whatsapp-bot/node_modules/
 node_modules/
+
+# Firebase credentials
+firebase-service-account.json
+/config/private/

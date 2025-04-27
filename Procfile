@@ -1,0 +1,1 @@
+web: java -jar target/trixmart-id-system.jar --server.port=$PORT
