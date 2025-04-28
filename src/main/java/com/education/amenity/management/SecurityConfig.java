@@ -13,10 +13,10 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> csrf.disable())  // APIs are stateless
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/students/**").permitAll()  // Allow public access
-                        .anyRequest().authenticated()
+                        .requestMatchers("/api/students/**").permitAll()  // Public access
+                        .anyRequest().denyAll()  // Block everything else (adjust as needed)
                 );
         return http.build();
     }
