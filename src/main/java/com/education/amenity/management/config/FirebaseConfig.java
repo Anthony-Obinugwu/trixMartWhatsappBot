@@ -10,7 +10,6 @@ import com.google.firebase.cloud.FirestoreClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.DependsOn;
 import org.springframework.core.io.ClassPathResource;
 
 import java.io.IOException;
@@ -18,7 +17,7 @@ import java.io.IOException;
 @Configuration
 public class FirebaseConfig {
 
-    @Value("${firebase.credentials.path}")
+    @Value("${firebase.credentials.path:firebase-credentials.json}")
     private String credentialsPath;
 
     @Bean
@@ -28,7 +27,6 @@ public class FirebaseConfig {
                         new ClassPathResource(credentialsPath).getInputStream()))
                 .build();
 
-        // Only initialize if not already initialized
         if (FirebaseApp.getApps().isEmpty()) {
             return FirebaseApp.initializeApp(options);
         }
@@ -36,14 +34,12 @@ public class FirebaseConfig {
     }
 
     @Bean
-    @DependsOn("firebaseApp")  // This ensures FirebaseApp is initialized first
     public Firestore firestore(FirebaseApp firebaseApp) {
-        return FirestoreClient.getFirestore(firebaseApp);  // Explicitly use the app instance
+        return FirestoreClient.getFirestore(firebaseApp);
     }
 
     @Bean
-    @DependsOn("firebaseApp")
-    public Storage firebaseStorage(FirebaseApp firebaseApp) throws IOException {
+    public Storage firebaseStorage() throws IOException {
         return StorageOptions.newBuilder()
                 .setCredentials(GoogleCredentials.fromStream(
                         new ClassPathResource(credentialsPath).getInputStream()))

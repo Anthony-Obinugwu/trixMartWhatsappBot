@@ -1,10 +1,8 @@
-HELP.md
-target/
+### Build directories ###
+/target/
 !.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
 
-### STS ###
+### IDE files ###
 .apt_generated
 .classpath
 .factorypath
@@ -12,30 +10,21 @@ target/
 .settings
 .springBeans
 .sts4-cache
-
-### IntelliJ IDEA ###
 .idea
 *.iws
 *.iml
 *.ipr
-
-### NetBeans ###
 /nbproject/private/
 /nbbuild/
 /dist/
 /nbdist/
 /.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
 .vscode/
-node_modules/
+
+### Node ###
 node_modules/
 whatsapp-bot/node_modules/
-node_modules/
 
-# Firebase credentials
-firebase-service-account.json
-/config/private/
+### Firebase ###
+firebase-credentials.json
+src/main/resources/firebase-credentials.json
