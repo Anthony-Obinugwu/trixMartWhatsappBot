@@ -8,7 +8,7 @@ const fetch = require("node-fetch").default;
 const app = express();
 app.use(bodyParser.json());
 
-const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:8080";
+const API_BASE_URL = process.env.API_BASE_URL || "http://147.182.193.125:8080";
 const FRONTEND_UPLOAD_URL = process.env.FRONTEND_URL || "https://trix-mart-upload-vercel-tawny.vercel.app";
 const BOT_SECRET = process.env.BOT_SECRET || "trixmart";
 
