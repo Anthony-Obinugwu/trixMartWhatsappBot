@@ -4,7 +4,7 @@ import lombok.Data;
 
 @Data
 public class WhatsappMessage {
-    private Long studentId;
+    private String studentId;
     private String studentName;
     private String businessName;
     private String businessType;

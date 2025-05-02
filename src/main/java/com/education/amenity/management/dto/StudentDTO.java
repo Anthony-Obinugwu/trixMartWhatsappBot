@@ -5,13 +5,13 @@ import lombok.Data;
 
 @Data
 public class StudentDTO {
-    private Long studentId;
+    private String studentId;
     private String studentName;
     private String businessName;
     private String businessType;
     private String subscriptionType;
     private String phoneNumber;
-    private String fileUrl;      // Firebase URL
-    private String fileType;    // e.g., "image/jpeg"
-    private Long fileSize;      // in bytes
+    private String fileUrl;
+    private String fileType;
+    private Long fileSize;
 }

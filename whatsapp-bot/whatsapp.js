@@ -8,10 +8,9 @@ const fetch = require("node-fetch").default;
 const app = express();
 app.use(bodyParser.json());
 
-// Environment variables
 const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:8080";
 const FRONTEND_UPLOAD_URL = process.env.FRONTEND_URL || "https://trix-mart-upload-vercel-tawny.vercel.app";
-const BOT_SECRET = process.env.BOT_SECRET || "change-this-to-a-random-string";
+const BOT_SECRET = process.env.BOT_SECRET || "trixmart";
 
 const client = new Client({
     puppeteer: {
@@ -20,48 +19,28 @@ const client = new Client({
     }
 });
 
-// State management
 const state = {};
 const triggerKeyword = "register";
 const uploadStatus = {};
-const registrationTimeouts = {};
-
-// Helpers
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const resetState = (chatId) => {
     state[chatId] = {
         keywordTriggered: false,
         step: 0,
         details: {},
-        cancelled: false,
-        needsIdCorrection: false,
-        awaitingIdCorrection: false
+        cancelled: false
     };
 };
 
-// Improved with error handling and env vars
-async function isStudentIdExists(studentId) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/students/check-id?studentId=${encodeURIComponent(studentId)}`);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        return await response.json();
-    } catch (error) {
-        console.error("Failed to check student ID:", error);
-        return { exists: false };
-    }
-}
-
 async function sendSafeMessage(chatId, text, delay = 0) {
     try {
-        if (delay > 0) await sleep(delay);
+        if (delay > 0) await new Promise(resolve => setTimeout(resolve, delay));
         await client.sendMessage(chatId, text);
     } catch (error) {
         console.error('Failed to send message:', error);
     }
 }
 
-// WhatsApp client events
 client.on("qr", qr => {
     qrcode.generate(qr, { small: true });
     console.log("Scan the QR Code above to connect the bot");
@@ -79,37 +58,9 @@ client.on("message", async message => {
         if (!state[chatId]) resetState(chatId);
         const userState = state[chatId];
 
-        // Clear existing timeout
-        if (registrationTimeouts[chatId]) {
-            clearTimeout(registrationTimeouts[chatId]);
-            delete registrationTimeouts[chatId];
-        }
-
-        // New reset command
-        if (userMessage.includes("reset")) {
-            resetState(chatId);
-            await sendSafeMessage(chatId, "♻️ Session reset. Send 'register' to start.");
-            return;
-        }
-
-        // Set timeout for session
-        if (userState.keywordTriggered && !userState.cancelled) {
-            registrationTimeouts[chatId] = setTimeout(async () => {
-                resetState(chatId);
-                await sendSafeMessage(chatId, "Session timed out. Send 'register' to start again.");
-            }, 30 * 60 * 1000);
-        }
-
         if (userMessage.includes("cancel")) {
             resetState(chatId);
             await sendSafeMessage(chatId, "🚫 Registration cancelled. Send 'register' to start again.");
-            return;
-        }
-
-        if (userMessage.includes("restart")) {
-            resetState(chatId);
-            await sendSafeMessage(chatId, "🔄 Restarting registration...");
-            await initRegistrationFlow(chatId);
             return;
         }
 
@@ -129,55 +80,13 @@ client.on("message", async message => {
 });
 
 async function handleStep1(message, userState, chatId) {
-    if (userState.needsIdCorrection) {
-        if (message.body.trim().toLowerCase() === "edit id") {
-            userState.awaitingIdCorrection = true;
-            await sendSafeMessage(chatId, "📝 Send your corrected Student ID:");
-            return;
-        }
-
-        if (userState.awaitingIdCorrection) {
-            const newId = message.body.trim();
-
-            // Validate ID format (numbers only)
-            if (!/^\d+$/.test(newId)) {
-                await sendSafeMessage(chatId, "❌ Invalid ID (numbers only). Try again:");
-                return;
-            }
-
-            const { exists } = await isStudentIdExists(newId);
-            if (exists) {
-                await sendSafeMessage(chatId, "❌ ID already registered. Send another one:");
-                return;
-            }
-
-            userState.details.studentId = newId;
-            userState.needsIdCorrection = false;
-            userState.awaitingIdCorrection = false;
-            await sendSafeMessage(chatId, "✅ ID updated!");
-            await sendConfirmationMessage(chatId, userState);
-            userState.step = 2;
-            return;
-        }
-    }
-
     const details = message.body.split("\n").map(line => line.trim());
 
     if (details.length === 5 && details.every(d => d)) {
         const [studentId, name, businessName, businessType, subscriptionType] = details;
 
-        // Validate student ID
         if (!/^\d+$/.test(studentId)) {
             await sendSafeMessage(chatId, "❌ Invalid Student ID (numbers only). Try again:");
-            return;
-        }
-
-        const { exists } = await isStudentIdExists(studentId);
-        if (exists) {
-            userState.details = { studentId, name, businessName, businessType, subscriptionType };
-            userState.needsIdCorrection = true;
-            await sendSafeMessage(chatId, `⚠️ Student ID ${studentId} already exists.`);
-            await sendSafeMessage(chatId, "Send 'edit id' to correct it or 'restart' to start over.", 1000);
             return;
         }
 
@@ -203,17 +112,33 @@ async function handleStep2(message, userState, chatId) {
 
     if (response === 'yes') {
         try {
-            uploadStatus[userState.details.studentId] = chatId;
-            const uploadLink = `${FRONTEND_UPLOAD_URL}?studentId=${userState.details.studentId}`;
+            // Save to Firestore first
+            const res = await fetch(`${API_BASE_URL}/api/students/whatsapp-webhook`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    studentId: userState.details.studentId,
+                    studentName: userState.details.name,
+                    businessName: userState.details.businessName,
+                    businessType: userState.details.businessType,
+                    subscriptionType: userState.details.subscriptionType,
+                    phoneNumber: userState.details.phoneNumber
+                })
+            });
 
-            await sendSafeMessage(chatId, `✅ Details confirmed!`);
+            if (!res.ok) throw new Error('Failed to save to Firestore');
+
+            uploadStatus[userState.details.studentId] = chatId;
+            const uploadLink = `${FRONTEND_UPLOAD_URL}/upload?id=${userState.details.studentId}`;
+
+            await sendSafeMessage(chatId, `✅ Registration started!`);
             await sendSafeMessage(chatId, `📷 Upload your ID here: ${uploadLink}`, 1000);
             await sendSafeMessage(chatId, "⚠️ Link expires in 5 minutes.", 1000);
 
-            userState.step = 3; // waiting for image upload
+            userState.step = 3;
         } catch (error) {
             console.error(error);
-            await sendSafeMessage(chatId, "❌ Failed to generate upload link. Try again.");
+            await sendSafeMessage(chatId, "❌ Failed to start registration. Try again.");
         }
     } else if (response === 'edit') {
         userState.step = 1;
@@ -246,7 +171,6 @@ async function sendConfirmationMessage(chatId, userState) {
     await sendSafeMessage(chatId, "Reply 'yes' to confirm or 'edit' to change.", 500);
 }
 
-// Webhook for upload confirmation
 app.post('/upload-confirmation', async (req, res) => {
     try {
         if (req.headers['x-bot-secret'] !== BOT_SECRET) {
@@ -257,25 +181,10 @@ app.post('/upload-confirmation', async (req, res) => {
         const chatId = uploadStatus[studentId];
         if (!chatId) return res.status(400).json({ error: 'Invalid student ID' });
 
-        await sendSafeMessage(chatId, `🎉 Upload confirmed for ID: ${studentId}`);
+        await sendSafeMessage(chatId, `🎉 ID upload confirmed for: ${studentId}`);
         await sendSafeMessage(chatId, '✅ Your registration is now complete!', 1000);
 
-        const details = state[chatId].details;
-        await fetch(`${API_BASE_URL}/api/students/register`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                studentId: Number(details.studentId),
-                studentName: details.name,
-                businessName: details.businessName,
-                businessType: details.businessType,
-                subscriptionType: details.subscriptionType,
-                phoneNumber: details.phoneNumber,
-            }),
-        });
-
         delete uploadStatus[studentId];
-        delete state[chatId];
         res.json({ success: true });
     } catch (err) {
         console.error('Webhook error:', err);
