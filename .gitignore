@@ -28,3 +28,8 @@ whatsapp-bot/node_modules/
 ### Firebase ###
 firebase-credentials.json
 src/main/resources/firebase-credentials.json
+
+Documents
+Documents.pub
+ssh key
+ssh key.pub

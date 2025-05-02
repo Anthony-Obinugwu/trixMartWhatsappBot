@@ -26,7 +26,8 @@ import java.util.concurrent.ExecutionException;
 @RequestMapping("/api/students")
 @CrossOrigin(origins = {
         "https://trix-mart-upload-vercel-tawny.vercel.app",
-        "http://localhost:3000"
+        "http://localhost:3000",
+        "http://localhost:8080"
 })
 @Validated
 public class StudentController {
@@ -51,7 +52,7 @@ public class StudentController {
             @RequestParam("studentId") String studentId,
             @RequestParam("file") MultipartFile file) {
         try {
-            // Validate file type
+
             String contentType = file.getContentType();
             String originalFilename = file.getOriginalFilename();
 
@@ -150,23 +151,23 @@ public class StudentController {
         }
     }
 
-    @GetMapping("/check-id")
-    public ResponseEntity<Map<String, Boolean>> checkIdExistsV2(
-            @RequestParam String studentId) {
-        try {
-            boolean exists = firebaseService.getFirestore()
-                    .collection("students")
-                    .document(studentId)
-                    .get()
-                    .get()
-                    .exists();
-
-            return ResponseEntity.ok(Collections.singletonMap("exists", exists));
-        } catch (InterruptedException | ExecutionException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Collections.singletonMap("exists", false));
-        }
-    }
+//    @GetMapping("/check-id")
+//    public ResponseEntity<Map<String, Boolean>> checkIdExistsV2(
+//            @RequestParam String studentId) {
+//        try {
+//            boolean exists = firebaseService.getFirestore()
+//                    .collection("students")
+//                    .document(studentId)
+//                    .get()
+//                    .get()
+//                    .exists();
+//
+//            return ResponseEntity.ok(Collections.singletonMap("exists", exists));
+//        } catch (InterruptedException | ExecutionException e) {
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                    .body(Collections.singletonMap("exists", false));
+//        }
+//    }
 
     // Keep the same GlobalExceptionHandler
     @ControllerAdvice
