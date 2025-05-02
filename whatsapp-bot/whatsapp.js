@@ -14,6 +14,7 @@ const BOT_SECRET = process.env.BOT_SECRET || "trixmart";
 
 const client = new Client({
     puppeteer: {
+
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox']
     }
