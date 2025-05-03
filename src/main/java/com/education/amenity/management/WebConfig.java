@@ -11,7 +11,8 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addMapping("/**")
                 .allowedOrigins(
                         "https://trix-mart-upload-vercel-tawny.vercel.app",
-                        "http://localhost:3000"
+                        "http://localhost:3000",
+                        "http://147.182.193.125:3000"
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE")
                 .allowedHeaders("*")

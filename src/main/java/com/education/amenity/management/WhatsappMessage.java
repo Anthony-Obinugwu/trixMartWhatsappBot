@@ -11,4 +11,3 @@ public class WhatsappMessage {
     private String subscriptionType;
     private String phoneNumber;
 }
-

@@ -8,13 +8,12 @@ const fetch = require("node-fetch").default;
 const app = express();
 app.use(bodyParser.json());
 
-const API_BASE_URL = process.env.API_BASE_URL || "http://147.182.193.125:8080";
+const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:8080";
 const FRONTEND_UPLOAD_URL = process.env.FRONTEND_URL || "https://trix-mart-upload-vercel-tawny.vercel.app";
-const BOT_SECRET = process.env.BOT_SECRET || "trixmart";
+const BOT_SECRET = process.env.BOT_SECRET || "your-secret-key";
 
 const client = new Client({
     puppeteer: {
-
         headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox']
     }
@@ -22,7 +21,6 @@ const client = new Client({
 
 const state = {};
 const triggerKeyword = "register";
-const uploadStatus = {};
 
 const resetState = (chatId) => {
     state[chatId] = {
@@ -113,8 +111,7 @@ async function handleStep2(message, userState, chatId) {
 
     if (response === 'yes') {
         try {
-            // Save to Firestore first
-            const res = await fetch(`${API_BASE_URL}/api/students/whatsapp-webhook`, {
+            const res = await fetch(`${API_BASE_URL}/api/students/whatsapp-registration`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -127,19 +124,23 @@ async function handleStep2(message, userState, chatId) {
                 })
             });
 
-            if (!res.ok) throw new Error('Failed to save to Firestore');
+            if (!res.ok) {
+                const errorData = await res.text();
+                throw new Error(errorData || 'Failed to save to database');
+            }
 
-            uploadStatus[userState.details.studentId] = chatId;
-            const uploadLink = `${FRONTEND_UPLOAD_URL}/upload?id=${userState.details.studentId}`;
+            const responseData = await res.json();
 
-            await sendSafeMessage(chatId, `✅ Registration started!`);
+            await sendSafeMessage(chatId, "✅ Details stored, please upload your ID to complete registration");
+
+            const uploadLink = `${FRONTEND_UPLOAD_URL}`;
             await sendSafeMessage(chatId, `📷 Upload your ID here: ${uploadLink}`, 1000);
             await sendSafeMessage(chatId, "⚠️ Link expires in 5 minutes.", 1000);
 
-            userState.step = 3;
+            resetState(chatId);
         } catch (error) {
             console.error(error);
-            await sendSafeMessage(chatId, "❌ Failed to start registration. Try again.");
+            await sendSafeMessage(chatId, `❌ Error: ${error.message}`);
         }
     } else if (response === 'edit') {
         userState.step = 1;
@@ -171,27 +172,6 @@ async function sendConfirmationMessage(chatId, userState) {
     );
     await sendSafeMessage(chatId, "Reply 'yes' to confirm or 'edit' to change.", 500);
 }
-
-app.post('/upload-confirmation', async (req, res) => {
-    try {
-        if (req.headers['x-bot-secret'] !== BOT_SECRET) {
-            return res.status(403).json({ error: 'Forbidden' });
-        }
-
-        const { studentId } = req.body;
-        const chatId = uploadStatus[studentId];
-        if (!chatId) return res.status(400).json({ error: 'Invalid student ID' });
-
-        await sendSafeMessage(chatId, `🎉 ID upload confirmed for: ${studentId}`);
-        await sendSafeMessage(chatId, '✅ Your registration is now complete!', 1000);
-
-        delete uploadStatus[studentId];
-        res.json({ success: true });
-    } catch (err) {
-        console.error('Webhook error:', err);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

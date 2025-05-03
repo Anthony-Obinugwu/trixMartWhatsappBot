@@ -9,14 +9,12 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable())  // APIs are stateless
+                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/students/**").permitAll()  // Public access
-                        .anyRequest().denyAll()  // Block everything else (adjust as needed)
+                        .anyRequest().permitAll()
                 );
         return http.build();
     }
